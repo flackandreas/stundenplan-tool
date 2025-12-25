@@ -1,0 +1,17 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block body %}
+<div class="container mt-5">
+    <h1>Welcome, {{ app.user.firstName }}!</h1>
+    <p>You are logged in to: <strong>{{ app.user.school.name }}</strong></p>
+    
+    <div class="card">
+        <div class="card-header">Dashboard</div>
+        <div class="card-body">
+            You have successfully logged in. This is the main dashboard for your school context.
+        </div>
+    </div>
+</div>
+{% endblock %}

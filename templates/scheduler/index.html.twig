@@ -1,0 +1,133 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Scheduler{% endblock %}
+
+{% block body %}
+<div class="container-fluid mt-4">
+<div class="row">
+    <!-- Sidebar: Unscheduled Lessons -->
+    <div class="col-md-3">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <span><i class="fa-solid fa-layer-group me-2"></i>Lessons</span>
+                <span class="badge bg-light text-primary">{{ lessons|length }}</span>
+            </div>
+            <div class="card-body p-0 d-flex flex-column" style="height: 75vh;">
+                <div class="overflow-auto flex-grow-1">
+                    <ul class="list-group list-group-flush">
+                        {% for lesson in lessons %}
+                            {% set remaining = lesson.hoursPerWeek - lesson.scheduleEntries|length %}
+                            {% if remaining > 0 %}
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="mb-0 text-primary">{{ lesson.subject.shortcode }}</h6>
+                                        <small class="text-muted">{{ lesson.studentClass.name }} • {{ lesson.teacher.shortcode }}</small>
+                                    </div>
+                                    <span class="badge bg-secondary rounded-pill">{{ remaining }}h</span>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="p-3 bg-light border-top mt-auto">
+                    <button class="btn btn-success w-100 shadow-sm fw-bold" id="generate-btn">
+                        <i class="fa-solid fa-wand-magic-sparkles me-2"></i> Auto-Schedule AI
+                    </button>
+                    <small class="text-muted d-block text-center mt-2" style="font-size: 0.8em;">
+                        Powered by Google Gemini
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main: Timetable Grid -->
+    <div class="col-md-9">
+        <div class="card shadow-sm h-100">
+             <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 text-dark"><i class="fa-solid fa-clock me-2 text-muted"></i>Timetable</h5>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-filter me-1"></i> Teacher</button>
+                    <button class="btn btn-outline-secondary btn-sm"><i class="fa-solid fa-filter me-1"></i> Class</button>
+                    <button class="btn btn-primary btn-sm active"><i class="fa-solid fa-door-open me-1"></i> Room</button>
+                </div>
+             </div>
+             <div class="card-body p-0 overflow-auto" style="height: 75vh;">
+                <table class="table table-bordered table-sm text-center table-hover mb-0" style="font-size: 0.85rem;">
+                    <thead class="bg-light sticky-top" style="z-index: 10;">
+                        <tr>
+                            <th class="align-middle bg-light" style="width: 80px;">Time</th>
+                            {% for room in rooms %}
+                                <th class="align-middle bg-light">{{ room.name }}<br><span class="badge bg-secondary fw-normal">{{ room.capacity }} sits</span></th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ts in timeSlots %}
+                            <tr>
+                                <td class="bg-light align-middle fw-bold text-muted">
+                                    <div style="font-size: 0.9em;">{{ ts.dayOfWeek == 1 ? 'MON' : ts.dayOfWeek == 2 ? 'TUE' : ts.dayOfWeek == 3 ? 'WED' : ts.dayOfWeek == 4 ? 'THU' : 'FRI' }}</div>
+                                    <div class="badge bg-secondary">{{ ts.periodNumber }}</div>
+                                    <div style="font-size: 0.75em;" class="mt-1">{{ ts.startTime|date('H:i') }}</div>
+                                </td>
+                                {% for room in rooms %}
+                                    {% set entry = schedule[ts.id][room.id] ?? null %}
+                                    <td class="align-middle p-1 {{ entry ? 'table-success' : '' }}">
+                                        {% if entry %}
+                                            <div class="p-1 rounded border border-success bg-white shadow-sm">
+                                                <div class="fw-bold text-success">{{ entry.lesson.subject.shortcode }}</div>
+                                                <div class="small">{{ entry.lesson.studentClass.name }}</div>
+                                                <div class="badge bg-light text-dark border">{{ entry.lesson.teacher.shortcode }}</div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted opacity-25">·</span>
+                                        {% endif %}
+                                    </td>
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+             </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const btn = document.getElementById('generate-btn');
+        if (!btn) return;
+
+        btn.addEventListener('click', function() {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Generating...';
+
+            fetch('{{ path('app_scheduler_generate') }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    btn.disabled = false;
+                    btn.innerHTML = '✨ Auto-Schedule with AI';
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                alert('An error occurred.');
+                btn.disabled = false;
+                btn.innerHTML = '✨ Auto-Schedule with AI';
+            });
+        });
+    });
+</script>
+{% endblock %}
